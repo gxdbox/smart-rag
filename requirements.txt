@@ -1,0 +1,12 @@
+streamlit
+openai
+numpy
+python-dotenv
+pypdf
+tiktoken
+paddlepaddle
+paddleocr
+pymupdf
+pillow
+rank-bm25
+jieba

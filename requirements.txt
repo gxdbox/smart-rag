@@ -10,3 +10,4 @@ pymupdf
 pillow
 rank-bm25
 jieba
+FlagEmbedding

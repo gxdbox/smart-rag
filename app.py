@@ -30,7 +30,9 @@ from rag_engine import (
     hybrid_search,
     clear_bm25_index,
     get_bm25_stats,
-    sync_bm25_from_vector_db
+    sync_bm25_from_vector_db,
+    search_with_rerank,
+    hybrid_search_with_rerank
 )
 from file_utils import read_file, get_supported_extensions
 from chunk_strategy import choose_chunk_strategy, get_strategy_description
@@ -148,14 +150,14 @@ def main():
         st.subheader("🔍 检索模式")
         retrieval_mode = st.radio(
             "选择检索方式",
-            ["向量检索", "BM25 检索", "混合检索"],
+            ["向量检索", "BM25 检索", "混合检索", "Rerank 精排", "混合 + Rerank（最强）"],
             index=2,
-            help="向量检索：语义理解\nBM25：精确匹配\n混合检索：综合最优（推荐）"
+            help="向量检索：语义理解\nBM25：精确匹配\n混合检索：综合最优\nRerank 精排：深度语义理解，准确率提升 20-30%\n混合 + Rerank：最强检索方案（推荐）"
         )
         st.session_state.retrieval_mode = retrieval_mode
         
         # 混合检索权重设置
-        if retrieval_mode == "混合检索":
+        if retrieval_mode in ["混合检索", "混合 + Rerank（最强）"]:
             vector_weight = st.slider(
                 "向量检索权重",
                 min_value=0.0,
@@ -166,6 +168,19 @@ def main():
             )
             st.session_state.vector_weight = vector_weight
             st.caption(f"BM25 权重: {1-vector_weight:.1f}")
+        
+        # Rerank 召回数量设置
+        if retrieval_mode in ["Rerank 精排", "混合 + Rerank（最强）"]:
+            recall_k = st.slider(
+                "召回候选数量",
+                min_value=10,
+                max_value=50,
+                value=20,
+                step=5,
+                help="第一阶段召回的候选数量，建议为最终结果数的 3-5 倍"
+            )
+            st.session_state.recall_k = recall_k
+            st.info("💡 Rerank 模型首次使用时会自动下载，请耐心等待")
         
         # 当前切片策略
         if st.session_state.chunk_strategy:
@@ -331,9 +346,18 @@ def main():
                             retrieved = search_top_k(user_query, k=top_k)
                         elif retrieval_mode == "BM25 检索":
                             retrieved = search_bm25(user_query, k=top_k)
-                        else:  # 混合检索
+                        elif retrieval_mode == "混合检索":
                             vector_weight = st.session_state.get('vector_weight', 0.5)
                             retrieved = hybrid_search(user_query, k=top_k, vector_weight=vector_weight)
+                        elif retrieval_mode == "Rerank 精排":
+                            recall_k = st.session_state.get('recall_k', 20)
+                            retrieved = search_with_rerank(user_query, k=top_k, recall_k=recall_k)
+                        else:  # 混合 + Rerank（最强）
+                            vector_weight = st.session_state.get('vector_weight', 0.5)
+                            recall_k = st.session_state.get('recall_k', 20)
+                            retrieved = hybrid_search_with_rerank(
+                                user_query, k=top_k, vector_weight=vector_weight, recall_k=recall_k
+                            )
                     
                     if not retrieved:
                         st.warning("未找到相关内容")

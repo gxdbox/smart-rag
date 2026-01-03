@@ -56,10 +56,22 @@ class RerankRanker(BaseRanker):
         """延迟加载 Rerank 模型"""
         try:
             from FlagEmbedding import FlagReranker
+            import os
             
-            print(f"[Rerank] 正在加载模型: {self.model_name}")
+            # 优先使用本地 ModelScope 下载的模型
+            local_model_path = os.path.expanduser(
+                '~/.cache/modelscope/hub/models/AI-ModelScope/bge-reranker-v2-m3'
+            )
+            
+            if os.path.exists(local_model_path):
+                print(f"[Rerank] 使用本地模型: {local_model_path}")
+                model_path = local_model_path
+            else:
+                print(f"[Rerank] 正在加载模型: {self.model_name}")
+                model_path = self.model_name
+            
             self.model = FlagReranker(
-                self.model_name,
+                model_path,
                 use_fp16=self.use_fp16
             )
             print(f"[Rerank] 模型加载成功")

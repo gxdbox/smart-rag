@@ -65,6 +65,8 @@ class VectorRetriever(BaseRetriever):
         Returns:
             候选文档列表（包含 embedding）
         """
+        import numpy as np
+        
         db = self._load_db()
         
         if not db["chunks"]:
@@ -72,10 +74,17 @@ class VectorRetriever(BaseRetriever):
         
         query_dim = len(query_embedding)
         documents = []
+        similarities = []
         
+        # 计算所有文档的余弦相似度
+        query_vec = np.array(query_embedding)
         for i, (chunk, emb) in enumerate(zip(db["chunks"], db["embeddings"])):
             if len(emb) != query_dim:
                 continue
+            
+            # 计算余弦相似度用于初步排序
+            emb_vec = np.array(emb)
+            similarity = np.dot(query_vec, emb_vec) / (np.linalg.norm(query_vec) * np.linalg.norm(emb_vec) + 1e-9)
             
             doc = Document(
                 id=i,
@@ -84,6 +93,12 @@ class VectorRetriever(BaseRetriever):
                 metadata={}
             )
             documents.append(doc)
+            similarities.append(similarity)
+        
+        # 按相似度排序并返回 top_k
+        if documents:
+            sorted_indices = np.argsort(similarities)[::-1][:top_k]
+            return [documents[i] for i in sorted_indices]
         
         return documents
     

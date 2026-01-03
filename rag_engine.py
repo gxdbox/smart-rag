@@ -846,6 +846,8 @@ def hybrid_search_with_rerank(
     # 合并所有候选文档
     all_texts = set(vector_scores.keys()) | set(bm25_scores.keys())
     
+    print(f"[混合+Rerank] 向量召回: {len(vector_scores)} 个, BM25召回: {len(bm25_scores)} 个, 合并后: {len(all_texts)} 个")
+    
     # 构建融合后的文档列表
     fused_documents = []
     for text in all_texts:
@@ -858,6 +860,10 @@ def hybrid_search_with_rerank(
         for d in vector_docs:
             if d.text == text:
                 doc = d
+                # 确保设置 hybrid_score
+                if not hasattr(doc, 'metadata') or doc.metadata is None:
+                    doc.metadata = {}
+                doc.metadata['hybrid_score'] = combined_score
                 break
         if doc is None:
             for d in bm25_docs:
@@ -873,6 +879,8 @@ def hybrid_search_with_rerank(
         
         if doc:
             fused_documents.append(doc)
+    
+    print(f"[混合+Rerank] 融合后文档数: {len(fused_documents)}")
     
     # 按融合分数排序，取 top recall_k
     fused_documents.sort(key=lambda d: d.metadata.get('hybrid_score', 0.0), reverse=True)

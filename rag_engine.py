@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from rag.retriever import VectorRetriever, BM25Retriever
 from rag.ranker import SimilarityRanker, RerankRanker
 from rag.generator import LLMGenerator
+from adaptive_filter import AdaptiveFilter, FilterConfig
 
 # 向量库文件路径
 VECTOR_DB_PATH = os.path.join(os.path.dirname(__file__), "vector_db.json")
@@ -503,8 +504,9 @@ def search_top_k(query: str, k: int = 3) -> List[Tuple[str, float]]:
     return [(doc.text, score) for doc, score in ranked_docs]
 
 
-def generate_answer(query: str, retrieved_chunks: List[Tuple[str, float]]) -> str:
-    """根据检索到的 chunks 和用户问题，调用 LLM 生成答案（已重构）
+def generate_answer(query: str, retrieved_chunks: List[Tuple[str, float]], 
+                   conversation_history: List[dict] = None) -> str:
+    """根据检索到的 chunks 和用户问题，调用 LLM 生成答案（已重构，支持多轮对话）
     
     注意：此函数已迁移到 LLMGenerator.generate()
     保留此函数是为了不破坏现有代码
@@ -512,6 +514,7 @@ def generate_answer(query: str, retrieved_chunks: List[Tuple[str, float]]) -> st
     Args:
         query: 用户问题
         retrieved_chunks: 检索到的 (chunk, score) 列表
+        conversation_history: 对话历史 [{"role": "user/assistant", "content": "..."}]
     
     Returns:
         LLM 生成的答案
@@ -529,7 +532,7 @@ def generate_answer(query: str, retrieved_chunks: List[Tuple[str, float]]) -> st
     model = os.getenv("CHAT_MODEL", "deepseek-chat")
     generator = LLMGenerator(client, model)
     
-    return generator.generate(query, ranked_docs)
+    return generator.generate(query, ranked_docs, conversation_history)
 
 
 def clear_vector_db():
@@ -634,13 +637,14 @@ def get_bm25_stats() -> dict:
     return retriever.get_stats()
 
 
-def hybrid_search(query: str, k: int = 3, vector_weight: float = 0.5) -> List[Tuple[str, float]]:
+def hybrid_search(query: str, k: int = 3, vector_weight: float = 0.5, use_adaptive_filter: bool = True) -> List[Tuple[str, float]]:
     """混合检索：结合向量检索和 BM25 检索
     
     Args:
         query: 查询文本
-        k: 返回的结果数量
+        k: 期望返回的结果数量（作为 max_results 参考）
         vector_weight: 向量检索的权重（0-1），BM25 权重为 1-vector_weight
+        use_adaptive_filter: 是否使用自适应过滤（动态阈值），False 则使用固定 top-k
     
     Returns:
         [(chunk, combined_score), ...] 列表
@@ -697,9 +701,28 @@ def hybrid_search(query: str, k: int = 3, vector_weight: float = 0.5) -> List[Tu
         combined_score = vector_weight * v_score + (1 - vector_weight) * b_score
         combined_results.append((text, combined_score))
     
-    # 6. 排序并返回 top-k
+    # 6. 排序
     combined_results.sort(key=lambda x: x[1], reverse=True)
-    return combined_results[:k]
+    
+    # 7. 自适应过滤或固定 top-k
+    if use_adaptive_filter:
+        filter_config = FilterConfig(
+            min_confidence=0.3,
+            max_results=k,
+            min_results=1,
+            gap_threshold=0.15,
+            percentile_threshold=0.6
+        )
+        adaptive_filter_obj = AdaptiveFilter(filter_config)
+        filtered_results, metadata = adaptive_filter_obj.filter_results(
+            combined_results, normalize=False  # 已归一化
+        )
+        print(f"[混合检索] 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果, "
+              f"阈值={metadata['threshold']:.3f} ({metadata['reason']}), "
+              f"平均分={metadata['avg_score']:.3f}")
+        return filtered_results
+    else:
+        return combined_results[:k]
 
 
 def sync_bm25_from_vector_db():
@@ -776,7 +799,8 @@ def hybrid_search_with_rerank(
     query: str, 
     k: int = 3, 
     vector_weight: float = 0.5,
-    recall_k: int = 20
+    recall_k: int = 20,
+    use_adaptive_filter: bool = True
 ) -> List[Tuple[str, float]]:
     """混合检索 + Rerank 精排（三阶段检索）
     
@@ -784,17 +808,20 @@ def hybrid_search_with_rerank(
     1. 第一阶段（召回）：向量检索 + BM25 检索，召回候选
     2. 第二阶段（融合）：加权融合两种检索结果
     3. 第三阶段（精排）：使用 Rerank 模型对融合结果进行精确排序
+    4. 第四阶段（过滤）：自适应阈值过滤低质量结果
     
     这是最强的检索方案，结合了：
     - 向量检索的语义理解能力
     - BM25 的精确匹配能力
     - Rerank 的深度语义交互能力
+    - 自适应过滤的质量保证
     
     Args:
         query: 查询文本
-        k: 最终返回的结果数量
+        k: 期望返回的结果数量（作为 max_results 参考）
         vector_weight: 向量检索的权重（0-1）
         recall_k: 第一阶段召回的候选数量
+        use_adaptive_filter: 是否使用自适应过滤（动态阈值）
     
     Returns:
         [(chunk, rerank_score), ...] 列表
@@ -892,12 +919,47 @@ def hybrid_search_with_rerank(
     # 4. 第三阶段：Rerank 精排
     try:
         rerank_ranker = RerankRanker()
-        ranked_docs = rerank_ranker.rank(query, query_embedding, fused_documents, top_k=k)
+        ranked_docs = rerank_ranker.rank(query, query_embedding, fused_documents, top_k=None)  # 不在这里截断
         
-        return [(doc.text, score) for doc, score in ranked_docs]
+        rerank_results = [(doc.text, score) for doc, score in ranked_docs]
+        
+        # 5. 第四阶段：自适应过滤
+        if use_adaptive_filter:
+            filter_config = FilterConfig(
+                min_confidence=0.3,
+                max_results=k,
+                min_results=1,
+                gap_threshold=0.15,
+                percentile_threshold=0.6
+            )
+            adaptive_filter_obj = AdaptiveFilter(filter_config)
+            filtered_results, metadata = adaptive_filter_obj.filter_results(
+                rerank_results, normalize=True  # Rerank 分数需要归一化
+            )
+            print(f"[混合+Rerank] 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果, "
+                  f"阈值={metadata['threshold']:.3f} ({metadata['reason']}), "
+                  f"平均分={metadata['avg_score']:.3f}")
+            return filtered_results
+        else:
+            return rerank_results[:k]
     
     except Exception as e:
         print(f"[Rerank] 精排失败，返回混合检索结果: {e}")
         # 降级方案：返回混合检索的结果
-        return [(doc.text, doc.metadata.get('hybrid_score', 0.0)) 
-                for doc in fused_documents[:k]]
+        hybrid_results = [(doc.text, doc.metadata.get('hybrid_score', 0.0)) 
+                          for doc in fused_documents]
+        
+        if use_adaptive_filter:
+            filter_config = FilterConfig(
+                min_confidence=0.3,
+                max_results=k,
+                min_results=1
+            )
+            adaptive_filter_obj = AdaptiveFilter(filter_config)
+            filtered_results, metadata = adaptive_filter_obj.filter_results(
+                hybrid_results, normalize=False  # 已归一化
+            )
+            print(f"[混合+Rerank降级] 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果")
+            return filtered_results
+        else:
+            return hybrid_results[:k]

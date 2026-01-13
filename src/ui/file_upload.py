@@ -13,8 +13,8 @@ from rag_engine import (
     add_to_vector_db,
     add_to_bm25_index
 )
-from file_utils import read_file
-from chunk_strategy import choose_chunk_strategy, get_strategy_description
+from src.utils import read_file
+from src.rag.chunker import choose_chunk_strategy, get_strategy_description
 
 
 def render_file_upload():

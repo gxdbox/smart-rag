@@ -34,15 +34,10 @@ from rag_engine import (
     search_with_rerank,
     hybrid_search_with_rerank
 )
-from file_utils import read_file, get_supported_extensions
-from chunk_strategy import choose_chunk_strategy, get_strategy_description
-from knowledge_graph import extract_knowledge_graph, format_graph_for_prompt, get_graph_stats
-from query_rewriter import QueryRewriter
-from topic_extractor import TopicExtractor
-from query_expansion import QueryExpander, multi_query_retrieval
-from multi_step_query import MultiStepQueryEngine
-from hyde import HyDERetriever
-from multi_variant_recall import MultiVariantRecaller
+from src.utils import read_file, get_supported_extensions
+from src.rag.chunker import choose_chunk_strategy, get_strategy_description
+from src.rag.graph import extract_knowledge_graph, format_graph_for_prompt, get_graph_stats
+from src.rag.query import QueryRewriter, TopicExtractor, QueryExpander, multi_query_retrieval, MultiStepQueryEngine, HyDERetriever, MultiVariantRecaller
 
 
 def init_session_state():

@@ -4,7 +4,8 @@
 演示如何使用动态阈值过滤检索结果
 """
 
-from adaptive_filter import AdaptiveFilter, FilterConfig, adaptive_filter
+from src.rag.filter import AdaptiveFilter, FilterConfig
+from src.rag.filter.adaptive_filter import adaptive_filter
 
 
 def example_1_basic_usage():

@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 from rag.retriever import VectorRetriever, BM25Retriever
 from rag.ranker import SimilarityRanker, RerankRanker
 from rag.generator import LLMGenerator
-from adaptive_filter import AdaptiveFilter, FilterConfig
+from src.rag.filter import AdaptiveFilter, FilterConfig
 
 # 向量库文件路径
 VECTOR_DB_PATH = os.path.join(os.path.dirname(__file__), "vector_db.json")

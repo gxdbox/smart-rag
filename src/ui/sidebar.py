@@ -14,8 +14,8 @@ from rag_engine import (
     clear_vector_db,
     clear_bm25_index
 )
-from file_utils import get_supported_extensions
-from chunk_strategy import get_strategy_description
+from src.utils import get_supported_extensions
+from src.rag.chunker import get_strategy_description
 
 
 def load_config():

@@ -67,7 +67,7 @@ def read_pdf(file_content: bytes) -> str:
         # 文本太短 → 图片 PDF → 自动 OCR
         print("[PDF] 检测到图片型 PDF，启用 OCR...")
         try:
-            from ocr_utils import pdf_to_text_with_ocr
+            from .ocr_utils import pdf_to_text_with_ocr
             ocr_text = pdf_to_text_with_ocr(file_content)
             return ocr_text
         except Exception as ocr_e:
@@ -78,7 +78,7 @@ def read_pdf(file_content: bytes) -> str:
         # pypdf 失败，强制走 OCR
         print(f"[PDF] pypdf 解析失败 ({e})，尝试 OCR...")
         try:
-            from ocr_utils import pdf_to_text_with_ocr
+            from .ocr_utils import pdf_to_text_with_ocr
             return pdf_to_text_with_ocr(file_content)
         except Exception as ocr_e:
             print(f"[PDF] OCR 也失败了: {ocr_e}")
@@ -109,7 +109,7 @@ def read_image(file_content: bytes) -> str:
     Returns:
         OCR 识别出的文本内容
     """
-    from ocr_utils import ocr_image_bytes
+    from .ocr_utils import ocr_image_bytes
     
     try:
         text = ocr_image_bytes(file_content)

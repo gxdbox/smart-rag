@@ -230,8 +230,7 @@ def render_chat_interface():
             
             # 生成回答
             with st.spinner("正在生成回答..."):
-                context = "\n\n".join([chunk for chunk, _ in retrieved])
-                answer = generate_answer(user_query, context, st.session_state.conversation_history)
+                answer = generate_answer(user_query, retrieved, st.session_state.conversation_history)
             
             st.markdown("### 🤖 回答")
             st.markdown(answer)

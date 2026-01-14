@@ -6,13 +6,6 @@
 from typing import List, Tuple, Optional, Dict, Any
 from openai import OpenAI
 
-from rag_engine import (
-    search_top_k,
-    search_bm25,
-    search_with_rerank
-)
-from src.rag.core import hybrid_search, hybrid_search_with_rerank
-
 
 class RetrievalDispatcher:
     """
@@ -53,6 +46,10 @@ class RetrievalDispatcher:
         Returns:
             [(chunk, score), ...] 列表
         """
+        # 延迟导入以避免循环依赖
+        from rag_engine import search_top_k, search_bm25, search_with_rerank
+        from src.rag.core.hybrid_retrieval import hybrid_search, hybrid_search_with_rerank
+        
         if mode not in self.supported_modes:
             raise ValueError(f"不支持的检索模式: {mode}，支持的模式: {self.supported_modes}")
         

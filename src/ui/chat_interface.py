@@ -19,7 +19,8 @@ from rag_engine import (
     get_db_stats
 )
 from src.rag.graph import extract_knowledge_graph, format_graph_for_prompt
-from src.rag.query import QueryRewriter, TopicExtractor, QueryExpander, multi_query_retrieval, MultiStepQueryEngine, HyDERetriever, MultiVariantRecaller
+from src.rag.query import QueryRewriter, TopicExtractor
+from src.rag.core import RetrievalDispatcher
 
 
 def render_conversation_history():
@@ -66,26 +67,21 @@ def render_conversation_history():
 
 
 def perform_retrieval(actual_query, retrieval_mode, top_k):
-    """执行检索（统一入口）"""
-    if retrieval_mode == "向量检索":
-        return search_top_k(actual_query, k=top_k)
-    elif retrieval_mode == "BM25 检索":
-        return search_bm25(actual_query, k=top_k)
-    elif retrieval_mode == "混合检索":
-        vector_weight = st.session_state.get('vector_weight', 0.5)
-        use_adaptive = st.session_state.get('enable_adaptive_filter', True)
-        return hybrid_search(actual_query, k=top_k, vector_weight=vector_weight, use_adaptive_filter=use_adaptive)
-    elif retrieval_mode == "Rerank 精排":
-        recall_k = st.session_state.get('recall_k', 20)
-        return search_with_rerank(actual_query, k=top_k, recall_k=recall_k)
-    else:  # 混合 + Rerank（最强）
-        vector_weight = st.session_state.get('vector_weight', 0.5)
-        recall_k = st.session_state.get('recall_k', 20)
-        use_adaptive = st.session_state.get('enable_adaptive_filter', True)
-        return hybrid_search_with_rerank(
-            actual_query, k=top_k, vector_weight=vector_weight, 
-            recall_k=recall_k, use_adaptive_filter=use_adaptive
-        )
+    """执行检索（使用统一分发器）"""
+    dispatcher = RetrievalDispatcher()
+    
+    vector_weight = st.session_state.get('vector_weight', 0.5)
+    recall_k = st.session_state.get('recall_k', 20)
+    use_adaptive = st.session_state.get('enable_adaptive_filter', True)
+    
+    return dispatcher.dispatch(
+        query=actual_query,
+        mode=retrieval_mode,
+        top_k=top_k,
+        vector_weight=vector_weight,
+        recall_k=recall_k,
+        use_adaptive_filter=use_adaptive
+    )
 
 
 def render_chat_interface():

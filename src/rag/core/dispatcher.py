@@ -20,7 +20,8 @@ class RetrievalDispatcher:
             "BM25 检索",
             "混合检索",
             "Rerank 精排",
-            "混合 + Rerank"
+            "混合 + Rerank",
+            "混合 + Rerank（最强）"  # 兼容 UI 中的完整名称
         ]
     
     def dispatch(
@@ -70,7 +71,7 @@ class RetrievalDispatcher:
         elif mode == "Rerank 精排":
             return search_with_rerank(query, k=top_k, recall_k=recall_k)
         
-        elif mode == "混合 + Rerank":
+        elif mode == "混合 + Rerank" or mode == "混合 + Rerank（最强）":
             return hybrid_search_with_rerank(
                 query,
                 k=top_k,

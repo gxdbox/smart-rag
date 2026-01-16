@@ -20,10 +20,10 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-from rag.retriever import VectorRetriever, BM25Retriever
-from rag.ranker import SimilarityRanker, RerankRanker
-from rag.generator import LLMGenerator
-from rag.retriever.base import Document
+from src.rag.retriever import VectorRetriever, BM25Retriever
+from src.rag.ranker import SimilarityRanker, RerankRanker
+from src.rag.generator import LLMGenerator
+from src.rag.retriever.base import Document
 
 # 从新模块导入
 from src.rag.chunker import split_text, split_text_by_strategy

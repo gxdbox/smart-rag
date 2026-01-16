@@ -5,11 +5,8 @@
 
 import numpy as np
 from typing import List, Tuple
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from rag.retriever.base import Document
-from rag.ranker.base import BaseRanker
+from src.rag.retriever.base import Document
+from src.rag.ranker.base import BaseRanker
 
 
 class SimilarityRanker(BaseRanker):

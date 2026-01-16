@@ -8,11 +8,10 @@
 """
 
 from typing import List, Tuple, Optional
-import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from rag.retriever.base import Document
-from rag.ranker.base import BaseRanker
+from FlagEmbedding import FlagReranker
+from src.rag.retriever.base import Document
+from src.rag.ranker.base import BaseRanker
 
 
 class RerankRanker(BaseRanker):

@@ -3,12 +3,10 @@
 迁移自 rag_engine.py 的现有实现
 """
 
-from typing import List, Tuple
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from rag.retriever.base import Document
-from rag.generator.base import BaseGenerator
+from typing import List, Tuple, Optional
+from openai import OpenAI
+from src.rag.retriever.base import Document
+from src.rag.generator.base import BaseGenerator
 
 
 class LLMGenerator(BaseGenerator):

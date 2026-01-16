@@ -4,10 +4,7 @@ Ranker 基类定义
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from rag.retriever.base import Document
+from src.rag.retriever.base import Document
 
 
 class BaseRanker(ABC):

@@ -10,9 +10,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-from rag.retriever import VectorRetriever, BM25Retriever
-from rag.retriever.base import Document
-from rag.ranker import SimilarityRanker, RerankRanker
+from src.rag.retriever import VectorRetriever, BM25Retriever
+from src.rag.retriever.base import Document
+from src.rag.ranker import SimilarityRanker, RerankRanker
 from src.rag.filter import AdaptiveFilter, FilterConfig
 
 

@@ -1,147 +1,158 @@
-# 📚 项目文档目录
+# 📚 Smart RAG 文档中心
 
-本目录包含 RAG 混合检索系统的所有技术文档。
-
----
-
-## 📖 文档列表
-
-### 1. **BM25 相关文档**
-
-#### [`BM25_USAGE.md`](./BM25_USAGE.md)
-**BM25 检索器使用指南**
-- 快速开始
-- API 文档
-- 使用场景和示例
-- 故障排除
-
-#### [`BM25_PRINCIPLE.md`](./BM25_PRINCIPLE.md)
-**BM25 算法原理详解**
-- BM25 算法公式
-- 三大核心机制（TF、IDF、长度归一化）
-- 与 MySQL 精确查找的区别
-- 实际案例分析
-
-#### [`BM25_IMPLEMENTATION_SUMMARY.md`](./BM25_IMPLEMENTATION_SUMMARY.md)
-**BM25 实现总结**
-- 实现完成情况
-- 核心优势
-- 技术实现细节
-- 性能指标
+本目录包含 Smart RAG 系统的所有技术文档，已按类别组织便于查找。
 
 ---
 
-### 2. **混合检索文档**
-
-#### [`HYBRID_SEARCH_EXPLAINED.md`](./HYBRID_SEARCH_EXPLAINED.md)
-**混合检索原理详解**
-- 6 步工作流程
-- 分数归一化机制
-- 加权融合策略
-- 权重调整建议
-- 实际案例对比
-
----
-
-### 3. **UI 集成文档**
-
-#### [`UI_INTEGRATION_GUIDE.md`](./UI_INTEGRATION_GUIDE.md)
-**UI 集成完成指南**
-- 新增功能说明
-- UI 界面布局
-- 使用流程
-- 配置建议
-- 常见问题
-
----
-
-## 🗂️ 文档分类
-
-### 按用途分类
-
-| 类型 | 文档 | 适用人群 |
-|------|------|---------|
-| **使用指南** | `BM25_USAGE.md`<br>`UI_INTEGRATION_GUIDE.md` | 用户、开发者 |
-| **原理解释** | `BM25_PRINCIPLE.md`<br>`HYBRID_SEARCH_EXPLAINED.md` | 学习者、研究者 |
-| **技术总结** | `BM25_IMPLEMENTATION_SUMMARY.md` | 开发者、维护者 |
-
-### 按主题分类
+## 📂 文档目录结构
 
 ```
-BM25 检索
-├── BM25_USAGE.md              (使用)
-├── BM25_PRINCIPLE.md          (原理)
-└── BM25_IMPLEMENTATION_SUMMARY.md (实现)
-
-混合检索
-└── HYBRID_SEARCH_EXPLAINED.md (原理)
-
-UI 集成
-└── UI_INTEGRATION_GUIDE.md    (指南)
+docs/
+├── README.md                    (本文件 - 文档索引)
+├── features/                    (功能特性文档)
+│   ├── BM25_PRINCIPLE.md       (BM25 算法原理)
+│   ├── HYBRID_SEARCH_EXPLAINED.md (混合检索原理)
+│   └── RERANK_FEATURE.md       (Rerank 精排功能)
+├── implementation/              (实现细节文档)
+│   ├── BM25_IMPLEMENTATION_SUMMARY.md (BM25 实现总结)
+│   ├── BM25_USAGE.md           (BM25 使用指南)
+│   └── DATA_SYNC_ISSUE.md      (数据同步问题)
+├── guides/                      (使用指南)
+│   ├── UI_INTEGRATION_GUIDE.md (UI 集成指南)
+│   ├── multi_turn_test_guide.md (多轮对话测试)
+│   └── PRE_PUSH_CHECKLIST.md   (提交前检查清单)
+└── archive/                     (历史文档归档)
+    ├── chunk_size_optimization.md
+    ├── fundamental_design_issue.md
+    ├── fundamental_solution.md
+    ├── query_cache_requirement.md
+    ├── stage1_completion_summary.md
+    └── stage1_final_summary.md
 ```
 
 ---
 
 ## 🚀 快速导航
 
-### 我想了解...
+### 📖 功能特性 (features/)
 
-**如何使用 BM25？**
-→ [`BM25_USAGE.md`](./BM25_USAGE.md)
+**核心检索功能原理和设计**
 
-**BM25 的工作原理？**
-→ [`BM25_PRINCIPLE.md`](./BM25_PRINCIPLE.md)
+- **[BM25 算法原理](./features/BM25_PRINCIPLE.md)**
+  - BM25 算法公式详解
+  - TF、IDF、长度归一化机制
+  - 与传统精确匹配的区别
+  - 实际案例分析
 
-**混合检索如何工作？**
-→ [`HYBRID_SEARCH_EXPLAINED.md`](./HYBRID_SEARCH_EXPLAINED.md)
+- **[混合检索原理](./features/HYBRID_SEARCH_EXPLAINED.md)**
+  - 向量检索 + BM25 融合机制
+  - 分数归一化策略
+  - 加权融合算法
+  - 权重调优建议
 
-**如何在 UI 中使用？**
-→ [`UI_INTEGRATION_GUIDE.md`](./UI_INTEGRATION_GUIDE.md)
+- **[Rerank 精排功能](./features/RERANK_FEATURE.md)**
+  - 两阶段检索架构
+  - Rerank 模型原理
+  - 性能提升分析
+  - 使用场景和建议
 
-**项目实现了什么？**
-→ [`BM25_IMPLEMENTATION_SUMMARY.md`](./BM25_IMPLEMENTATION_SUMMARY.md)
+---
+
+### 🔧 实现细节 (implementation/)
+
+**技术实现和使用文档**
+
+- **[BM25 实现总结](./implementation/BM25_IMPLEMENTATION_SUMMARY.md)**
+  - 实现完成情况
+  - 核心技术细节
+  - 性能指标
+  - 优化方案
+
+- **[BM25 使用指南](./implementation/BM25_USAGE.md)**
+  - 快速开始
+  - API 文档
+  - 使用示例
+  - 故障排除
+
+- **[数据同步问题](./implementation/DATA_SYNC_ISSUE.md)**
+  - 向量库与 BM25 索引同步
+  - 问题分析和解决方案
+  - 同步工具使用
+
+---
+
+### 📘 使用指南 (guides/)
+
+**操作指南和最佳实践**
+
+- **[UI 集成指南](./guides/UI_INTEGRATION_GUIDE.md)**
+  - 功能说明
+  - 界面布局
+  - 使用流程
+  - 配置建议
+
+- **[多轮对话测试指南](./guides/multi_turn_test_guide.md)**
+  - 测试场景
+  - 测试方法
+  - 预期结果
+
+- **[提交前检查清单](./guides/PRE_PUSH_CHECKLIST.md)**
+  - 代码检查项
+  - 测试要求
+  - 文档更新
+
+---
+
+### 🗄️ 历史归档 (archive/)
+
+**已完成阶段的历史文档**
+
+- Stage 1 完成总结
+- 早期设计问题和解决方案
+- 查询缓存需求分析
+- Chunk 大小优化研究
+
+---
+
+## 💡 推荐阅读路径
+
+### 🌟 新手入门
+1. [BM25 使用指南](./implementation/BM25_USAGE.md) - 快速上手
+2. [UI 集成指南](./guides/UI_INTEGRATION_GUIDE.md) - 了解界面功能
+3. [BM25 算法原理](./features/BM25_PRINCIPLE.md) - 理解基础原理
+
+### 🎓 深入学习
+1. [BM25 算法原理](./features/BM25_PRINCIPLE.md) - 算法基础
+2. [混合检索原理](./features/HYBRID_SEARCH_EXPLAINED.md) - 融合策略
+3. [Rerank 精排功能](./features/RERANK_FEATURE.md) - 高级检索
+4. [BM25 实现总结](./implementation/BM25_IMPLEMENTATION_SUMMARY.md) - 实现细节
+
+### 👨‍💻 开发者路径
+1. [BM25 实现总结](./implementation/BM25_IMPLEMENTATION_SUMMARY.md) - 技术实现
+2. [数据同步问题](./implementation/DATA_SYNC_ISSUE.md) - 问题解决
+3. [提交前检查清单](./guides/PRE_PUSH_CHECKLIST.md) - 开发规范
+4. [混合检索原理](./features/HYBRID_SEARCH_EXPLAINED.md) - 架构设计
 
 ---
 
 ## 📝 文档更新记录
 
-| 日期 | 文档 | 更新内容 |
-|------|------|---------|
-| 2024-12-26 | 所有文档 | 创建并整理到 docs 目录 |
-| 2024-12-26 | `BM25_PRINCIPLE.md` | 添加 BM25 原理详解 |
-| 2024-12-26 | `HYBRID_SEARCH_EXPLAINED.md` | 添加混合检索原理 |
-| 2024-12-25 | `BM25_USAGE.md` | 创建 BM25 使用指南 |
-| 2024-12-25 | `BM25_IMPLEMENTATION_SUMMARY.md` | 创建实现总结 |
-| 2024-12-25 | `UI_INTEGRATION_GUIDE.md` | 创建 UI 集成指南 |
-
----
-
-## 💡 阅读建议
-
-### 新手入门路径
-1. [`BM25_USAGE.md`](./BM25_USAGE.md) - 快速上手
-2. [`UI_INTEGRATION_GUIDE.md`](./UI_INTEGRATION_GUIDE.md) - 了解 UI 功能
-3. [`BM25_PRINCIPLE.md`](./BM25_PRINCIPLE.md) - 理解原理
-
-### 深入学习路径
-1. [`BM25_PRINCIPLE.md`](./BM25_PRINCIPLE.md) - BM25 算法原理
-2. [`HYBRID_SEARCH_EXPLAINED.md`](./HYBRID_SEARCH_EXPLAINED.md) - 混合检索原理
-3. [`BM25_IMPLEMENTATION_SUMMARY.md`](./BM25_IMPLEMENTATION_SUMMARY.md) - 实现细节
-
-### 开发者路径
-1. [`BM25_IMPLEMENTATION_SUMMARY.md`](./BM25_IMPLEMENTATION_SUMMARY.md) - 实现总结
-2. [`HYBRID_SEARCH_EXPLAINED.md`](./HYBRID_SEARCH_EXPLAINED.md) - 混合检索实现
-3. [`BM25_USAGE.md`](./BM25_USAGE.md) - API 文档
+| 日期 | 更新内容 |
+|------|---------|
+| 2026-01-16 | 重组文档结构，按类别分类，删除重复文档 |
+| 2024-12-26 | 创建功能特性文档（BM25、混合检索） |
+| 2024-12-25 | 创建实现和使用指南文档 |
 
 ---
 
 ## 🔗 相关资源
 
 - **项目主文档**: [`../README.md`](../README.md)
-- **架构重构文档**: [`../REFACTORING.md`](../REFACTORING.md)
-- **源代码**: [`../rag/`](../rag/)
+- **可维护性分析**: [`../MAINTAINABILITY_ANALYSIS.md`](../MAINTAINABILITY_ANALYSIS.md)
+- **配置管理**: [`../config.py`](../config.py)
+- **源代码**: [`../src/`](../src/)
 
 ---
 
-**文档维护者**: Cascade AI  
-**最后更新**: 2024-12-26
+**文档维护**: Smart RAG Team  
+**最后更新**: 2026-01-16

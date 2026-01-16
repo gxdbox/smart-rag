@@ -16,6 +16,9 @@ import json
 from typing import List, Tuple
 from openai import OpenAI
 from dotenv import load_dotenv
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 from rag.retriever import VectorRetriever, BM25Retriever
 from rag.ranker import SimilarityRanker, RerankRanker
@@ -84,7 +87,7 @@ def embed_texts(texts: List[str]) -> List[List[float]]:
             batch_embeddings = [item.embedding for item in response.data]
             all_embeddings.extend(batch_embeddings)
         except Exception as e:
-            print(f"[Embedding] 批次 {i//batch_size + 1} 失败: {e}")
+            logger.error(f"Embedding 批次 {i//batch_size + 1} 失败: {e}", exc_info=True)
             raise
     
     return all_embeddings
@@ -279,7 +282,7 @@ def search_with_rerank(query: str, k: int = 3, recall_k: int = 20) -> List[Tuple
         return [(doc.text, score) for doc, score in ranked_docs]
     
     except Exception as e:
-        print(f"[Rerank] 精排失败，返回向量检索结果: {e}")
+        logger.error(f"Rerank 精排失败，返回向量检索结果: {e}", exc_info=True)
         ranker = SimilarityRanker()
         ranked_docs = ranker.rank(query, query_embedding, documents, top_k=k)
         return [(doc.text, score) for doc, score in ranked_docs]

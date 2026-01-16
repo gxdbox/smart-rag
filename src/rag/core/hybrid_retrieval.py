@@ -5,6 +5,10 @@
 
 import os
 from typing import List, Tuple
+import logging
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 from rag.retriever import VectorRetriever, BM25Retriever
 from rag.retriever.base import Document
@@ -122,9 +126,9 @@ def hybrid_search(query: str, k: int = 3, vector_weight: float = 0.5, use_adapti
         filtered_results, metadata = adaptive_filter_obj.filter_results(
             combined_results, normalize=False
         )
-        print(f"[混合检索] 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果, "
-              f"阈值={metadata['threshold']:.3f} ({metadata['reason']}), "
-              f"平均分={metadata['avg_score']:.3f}")
+        logger.info(f"混合检索自适应过滤: {metadata['kept']}/{metadata['total']} 个结果, "
+                    f"阈值={metadata['threshold']:.3f} ({metadata['reason']}), "
+                    f"平均分={metadata['avg_score']:.3f}")
         return filtered_results
     else:
         return combined_results[:k]
@@ -197,7 +201,7 @@ def hybrid_search_with_rerank(
     # 合并所有候选文档
     all_texts = set(vector_scores.keys()) | set(bm25_scores.keys())
     
-    print(f"[混合+Rerank] 向量召回: {len(vector_scores)} 个, BM25召回: {len(bm25_scores)} 个, 合并后: {len(all_texts)} 个")
+    logger.info(f"混合+Rerank 向量召回: {len(vector_scores)} 个, BM25召回: {len(bm25_scores)} 个, 合并后: {len(all_texts)} 个")
     
     # 构建融合后的文档列表
     fused_documents = []
@@ -228,7 +232,7 @@ def hybrid_search_with_rerank(
         if doc:
             fused_documents.append(doc)
     
-    print(f"[混合+Rerank] 融合后文档数: {len(fused_documents)}")
+    logger.info(f"混合+Rerank 融合后文档数: {len(fused_documents)}")
     
     # 按融合分数排序
     fused_documents.sort(key=lambda d: d.metadata.get('hybrid_score', 0.0), reverse=True)
@@ -257,15 +261,15 @@ def hybrid_search_with_rerank(
             filtered_results, metadata = adaptive_filter_obj.filter_results(
                 rerank_results, normalize=True
             )
-            print(f"[混合+Rerank] 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果, "
-                  f"阈值={metadata['threshold']:.3f} ({metadata['reason']}), "
-                  f"平均分={metadata['avg_score']:.3f}")
+            logger.info(f"混合+Rerank 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果, "
+                        f"阈值={metadata['threshold']:.3f} ({metadata['reason']}), "
+                        f"平均分={metadata['avg_score']:.3f}")
             return filtered_results
         else:
             return rerank_results[:k]
     
     except Exception as e:
-        print(f"[Rerank] 精排失败，返回混合检索结果: {e}")
+        logger.error(f"Rerank 精排失败，返回混合检索结果: {e}", exc_info=True)
         hybrid_results = [(doc.text, doc.metadata.get('hybrid_score', 0.0)) 
                           for doc in fused_documents]
         
@@ -279,7 +283,7 @@ def hybrid_search_with_rerank(
             filtered_results, metadata = adaptive_filter_obj.filter_results(
                 hybrid_results, normalize=False
             )
-            print(f"[混合+Rerank降级] 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果")
+            logger.info(f"混合+Rerank降级 自适应过滤: {metadata['kept']}/{metadata['total']} 个结果")
             return filtered_results
         else:
             return hybrid_results[:k]

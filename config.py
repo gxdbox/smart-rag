@@ -139,6 +139,47 @@ class UIConfig:
     conversation_export_format: str = "markdown"
 
 
+@dataclass
+class HiRAGConfig:
+    """HiRAG 层次化检索配置"""
+    # 核心功能开关
+    enable_hierarchical: bool = True
+    enable_local: bool = True
+    enable_global: bool = True
+    enable_bridge: bool = True
+    
+    # 权重配置
+    local_weight: float = 0.4
+    global_weight: float = 0.3
+    bridge_weight: float = 0.3
+    
+    # 索引参数
+    global_summary_max_tokens: int = 500
+    bridge_chunk_size: int = 1000
+    bridge_overlap: int = 200
+    
+    # 性能优化
+    enable_incremental_indexing: bool = True
+    index_cache_path: str = "./hirag_cache"
+    cache_ttl_hours: int = 24
+    cache_strategy: str = "content_hash"
+    
+    # 降级策略
+    enable_fallback: bool = True
+    fallback_on_timeout: bool = True
+    fallback_timeout_seconds: int = 5
+    enable_lite_mode: bool = False
+    
+    # 成本控制
+    max_cost_per_document: float = 0.1
+    max_total_cost: float = 10.0
+    enable_cost_alert: bool = True
+    cost_alert_threshold: float = 5.0
+    
+    # 融合策略
+    fusion_strategy: str = "weighted"
+
+
 class RAGConfig:
     """
     RAG 系统全局配置
@@ -153,6 +194,7 @@ class RAGConfig:
         self.generator = GeneratorConfig()
         self.knowledge_graph = KnowledgeGraphConfig()
         self.ui = UIConfig()
+        self.hirag = HiRAGConfig()
     
     @classmethod
     def get_default(cls) -> 'RAGConfig':
@@ -168,7 +210,8 @@ class RAGConfig:
             "query_optimization": self.query_optimization.__dict__,
             "generator": self.generator.__dict__,
             "knowledge_graph": self.knowledge_graph.__dict__,
-            "ui": self.ui.__dict__
+            "ui": self.ui.__dict__,
+            "hirag": self.hirag.__dict__
         }
     
     def __repr__(self) -> str:
@@ -214,3 +257,8 @@ def get_knowledge_graph_config() -> KnowledgeGraphConfig:
 def get_ui_config() -> UIConfig:
     """获取 UI 配置"""
     return DEFAULT_CONFIG.ui
+
+
+def get_hirag_config() -> HiRAGConfig:
+    """获取 HiRAG 配置"""
+    return DEFAULT_CONFIG.hirag

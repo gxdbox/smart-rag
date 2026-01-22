@@ -5,10 +5,12 @@ HiRAG 索引器模块
 
 from .base import KnowledgeLayer
 from .hierarchical_indexer import HierarchicalIndexer
-from .knowledge_builder import KnowledgeBuilder
+from .knowledge_builder import LocalKnowledgeLayer, GlobalKnowledgeLayer, BridgeKnowledgeLayer
 
 __all__ = [
     'KnowledgeLayer',
     'HierarchicalIndexer',
-    'KnowledgeBuilder',
+    'LocalKnowledgeLayer',
+    'GlobalKnowledgeLayer',
+    'BridgeKnowledgeLayer',
 ]

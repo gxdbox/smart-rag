@@ -23,6 +23,10 @@ class RetrievalDispatcher:
             "混合 + Rerank",
             "混合 + Rerank（最强）"  # 兼容 UI 中的完整名称
         ]
+        
+        # 智能路由组件（延迟初始化）
+        self._query_analyzer = None
+        self._strategy_router = None
     
     def dispatch(
         self,
@@ -86,6 +90,174 @@ class RetrievalDispatcher:
     def get_supported_modes(self) -> List[str]:
         """获取支持的检索模式列表"""
         return self.supported_modes.copy()
+    
+    def dispatch_with_preset(
+        self,
+        query: str,
+        preset_name: str,
+        top_k: int = 3
+    ) -> Tuple[List[Tuple[str, float]], Dict[str, Any]]:
+        """
+        使用预设策略进行检索
+        
+        Args:
+            query: 查询文本
+            preset_name: 预设名称 (smart/quick/balanced/accurate/policy_analysis/deep_search)
+            top_k: 返回的结果数量
+        
+        Returns:
+            (检索结果, 路由决策信息) 元组
+        """
+        from src.rag.routing import STRATEGY_PRESETS, QueryAnalyzer, StrategyRouter
+        
+        # 获取预设配置
+        if preset_name not in STRATEGY_PRESETS:
+            raise ValueError(f"未知的预设: {preset_name}")
+        
+        preset_config = STRATEGY_PRESETS[preset_name]['config']
+        
+        # 如果是智能路由，使用路由器自动决策
+        if preset_config.get('use_smart_routing'):
+            return self._dispatch_with_smart_routing(query, top_k)
+        
+        # 否则使用预设配置
+        return self._dispatch_with_config(query, preset_config, top_k)
+    
+    def _dispatch_with_smart_routing(
+        self,
+        query: str,
+        top_k: int
+    ) -> Tuple[List[Tuple[str, float]], Dict[str, Any]]:
+        """使用智能路由进行检索"""
+        from src.rag.routing import QueryAnalyzer, StrategyRouter
+        
+        # 延迟初始化路由组件
+        if self._query_analyzer is None:
+            self._query_analyzer = QueryAnalyzer()
+        if self._strategy_router is None:
+            self._strategy_router = StrategyRouter()
+        
+        # 1. 分析查询
+        query_profile = self._query_analyzer.analyze(query)
+        
+        # 2. 路由到最佳策略
+        strategy = self._strategy_router.route(query_profile)
+        
+        # 3. 执行检索
+        results = self._execute_strategy(query, strategy, top_k)
+        
+        # 4. 构建路由决策信息
+        decision_info = {
+            'query_type': query_profile.query_type,
+            'complexity': query_profile.complexity,
+            'domain': query_profile.domain,
+            'mode': strategy.mode,
+            'reason': strategy.reason,
+            'enable_hirag': strategy.enable_hirag,
+            'enable_hyde': strategy.enable_hyde,
+            'enable_rerank': strategy.enable_rerank
+        }
+        
+        return results, decision_info
+    
+    def _dispatch_with_config(
+        self,
+        query: str,
+        config: Dict[str, Any],
+        top_k: int
+    ) -> Tuple[List[Tuple[str, float]], Dict[str, Any]]:
+        """使用预设配置进行检索"""
+        mode = config.get('mode', 'hybrid')
+        vector_weight = config.get('vector_weight', 0.5)
+        recall_k = config.get('recall_k', 20)
+        use_adaptive = config.get('enable_adaptive_filter', True)
+        
+        # 执行检索
+        results = self.dispatch(
+            query=query,
+            mode=mode,
+            top_k=top_k,
+            vector_weight=vector_weight,
+            recall_k=recall_k,
+            use_adaptive_filter=use_adaptive
+        )
+        
+        decision_info = {
+            'mode': mode,
+            'preset_config': config
+        }
+        
+        return results, decision_info
+    
+    def _execute_strategy(
+        self,
+        query: str,
+        strategy,
+        top_k: int
+    ) -> List[Tuple[str, float]]:
+        """根据策略执行检索"""
+        from rag_engine import search_top_k, search_bm25, search_with_rerank
+        from src.rag.core.hybrid_retrieval import (
+            hybrid_search, 
+            hybrid_search_with_rerank,
+            hirag_search,
+            hirag_hybrid_search
+        )
+        
+        mode = strategy.mode
+        
+        # 纯向量检索
+        if mode == 'vector':
+            return search_top_k(query, k=top_k)
+        
+        # 纯 BM25 检索
+        elif mode == 'bm25':
+            return search_bm25(query, k=top_k)
+        
+        # 混合检索
+        elif mode == 'hybrid':
+            return hybrid_search(
+                query,
+                k=top_k,
+                vector_weight=strategy.vector_weight,
+                use_adaptive_filter=strategy.enable_adaptive_filter
+            )
+        
+        # 混合检索 + Rerank
+        elif mode == 'hybrid_rerank':
+            return hybrid_search_with_rerank(
+                query,
+                k=top_k,
+                vector_weight=strategy.vector_weight,
+                recall_k=strategy.recall_k,
+                use_adaptive_filter=strategy.enable_adaptive_filter
+            )
+        
+        # 纯 HiRAG 检索
+        elif mode == 'hirag':
+            return hirag_search(
+                query,
+                k=top_k,
+                mode=strategy.hirag_mode,
+                use_adaptive_filter=strategy.enable_adaptive_filter
+            )
+        
+        # HiRAG + 混合检索
+        elif mode == 'hirag_hybrid':
+            return hirag_hybrid_search(
+                query,
+                k=top_k,
+                vector_weight=strategy.vector_weight * 0.4,  # 调整权重分配
+                bm25_weight=strategy.vector_weight * 0.4,
+                hirag_weight=1 - strategy.vector_weight * 0.8,
+                hirag_mode=strategy.hirag_mode,
+                fusion_strategy=strategy.fusion_strategy,
+                use_adaptive_filter=strategy.enable_adaptive_filter
+            )
+        
+        else:
+            # 默认使用混合检索
+            return hybrid_search(query, k=top_k)
 
 
 class QueryOptimizedDispatcher(RetrievalDispatcher):

@@ -70,18 +70,36 @@ def perform_retrieval(actual_query, retrieval_mode, top_k):
     """执行检索（使用统一分发器）"""
     dispatcher = RetrievalDispatcher()
     
-    vector_weight = st.session_state.get('vector_weight', 0.5)
-    recall_k = st.session_state.get('recall_k', 20)
-    use_adaptive = st.session_state.get('enable_adaptive_filter', True)
+    # 检查是否使用预设模式
+    selected_preset = st.session_state.get('selected_preset')
     
-    return dispatcher.dispatch(
-        query=actual_query,
-        mode=retrieval_mode,
-        top_k=top_k,
-        vector_weight=vector_weight,
-        recall_k=recall_k,
-        use_adaptive_filter=use_adaptive
-    )
+    if selected_preset and selected_preset != 'custom':
+        # 使用预设模式
+        results, decision_info = dispatcher.dispatch_with_preset(
+            query=actual_query,
+            preset_name=selected_preset,
+            top_k=top_k
+        )
+        
+        # 保存路由决策信息到 session_state
+        if 'query_type' in decision_info:
+            st.session_state.last_routing_decision = decision_info
+        
+        return results
+    else:
+        # 使用自定义模式
+        vector_weight = st.session_state.get('vector_weight', 0.5)
+        recall_k = st.session_state.get('recall_k', 20)
+        use_adaptive = st.session_state.get('enable_adaptive_filter', True)
+        
+        return dispatcher.dispatch(
+            query=actual_query,
+            mode=retrieval_mode,
+            top_k=top_k,
+            vector_weight=vector_weight,
+            recall_k=recall_k,
+            use_adaptive_filter=use_adaptive
+        )
 
 
 def render_chat_interface():

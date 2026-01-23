@@ -16,6 +16,7 @@ from rag_engine import (
 )
 from src.utils import get_supported_extensions
 from src.rag.chunker import get_strategy_description
+from src.rag.routing import STRATEGY_PRESETS
 
 
 def load_config():
@@ -94,125 +95,179 @@ def render_sidebar():
             st.success("BM25 索引已清空！")
             st.rerun()
     
-    # 检索模式选择
-    st.subheader("🔍 检索模式")
-    retrieval_mode = st.radio(
-        "选择检索方式",
-        ["向量检索", "BM25 检索", "混合检索", "Rerank 精排", "混合 + Rerank（最强）"],
-        index=2,
-        help="向量检索：语义理解\nBM25：精确匹配\n混合检索：综合最优\nRerank 精排：深度语义理解，准确率提升 20-30%\n混合 + Rerank：最强检索方案（推荐）"
+    # 检索模式选择 - 智能路由预设
+    st.subheader("🎯 检索策略")
+    
+    # 构建预设选项
+    preset_options = []
+    preset_keys = []
+    for key, preset in STRATEGY_PRESETS.items():
+        preset_options.append(f"{preset['icon']} {preset['name']}")
+        preset_keys.append(key)
+    
+    # 添加自定义选项
+    preset_options.append("⚙️ 自定义配置")
+    preset_keys.append("custom")
+    
+    selected_preset_display = st.radio(
+        "选择检索策略",
+        preset_options,
+        index=0,  # 默认选择智能路由
+        help="智能路由会根据您的问题自动选择最佳策略"
     )
-    st.session_state.retrieval_mode = retrieval_mode
     
-    # 混合检索权重设置
-    if retrieval_mode in ["混合检索", "混合 + Rerank（最强）"]:
-        vector_weight = st.slider(
-            "向量检索权重",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.5,
-            step=0.1,
-            help="权重越高，越依赖语义理解；权重越低，越依赖精确匹配"
-        )
-        st.session_state.vector_weight = vector_weight
-        st.caption(f"BM25 权重: {1-vector_weight:.1f}")
+    # 获取选中的预设 key
+    selected_index = preset_options.index(selected_preset_display)
+    selected_preset = preset_keys[selected_index]
+    st.session_state.selected_preset = selected_preset
     
-    # Rerank 召回数量设置
-    if retrieval_mode in ["Rerank 精排", "混合 + Rerank（最强）"]:
-        recall_k = st.slider(
-            "召回候选数量",
-            min_value=10,
-            max_value=50,
-            value=20,
-            step=5,
-            help="第一阶段召回的候选数量，建议为最终结果数的 3-5 倍"
-        )
-        st.session_state.recall_k = recall_k
-        st.info("💡 Rerank 模型首次使用时会自动下载，请耐心等待")
-    
-    # 自适应过滤选项
-    if retrieval_mode in ["混合检索", "混合 + Rerank（最强）"]:
-        enable_adaptive_filter = st.checkbox(
-            "🎯 启用自适应过滤（动态阈值）",
-            value=True,
-            help="根据分数分布自动确定过滤阈值，避免盲目截断。推荐开启以提升召回质量。"
-        )
-        st.session_state.enable_adaptive_filter = enable_adaptive_filter
+    # 显示预设说明
+    if selected_preset != "custom":
+        preset_info = STRATEGY_PRESETS[selected_preset]
+        st.info(f"💡 {preset_info['description']}")
         
-        if enable_adaptive_filter:
-            st.caption("✅ 将使用肘部法则、断崖检测等策略动态过滤低质量结果")
-        else:
-            st.caption("⚠️ 将使用固定 Top-K 截断（可能引入噪声或遗漏高质量结果）")
+        # 如果是智能路由，显示路由决策信息
+        if selected_preset == "smart" and st.session_state.get('last_routing_decision'):
+            with st.expander("🔍 查看上次路由决策"):
+                decision = st.session_state.last_routing_decision
+                st.write(f"**查询类型**: {decision.get('query_type', 'N/A')}")
+                st.write(f"**复杂度**: {decision.get('complexity', 'N/A')}")
+                st.write(f"**选择策略**: {decision.get('mode', 'N/A')}")
+                st.write(f"**原因**: {decision.get('reason', 'N/A')}")
     
-    # 查询优化选项
-    st.subheader("🔎 查询优化")
-    
-    enable_hyde = st.checkbox(
-        "启用 HyDE",
-        value=False,
-        help="生成假设文档增强查询语义。特别适合模糊查询或信息不足的场景。"
-    )
-    st.session_state.enable_hyde = enable_hyde
-    
-    if enable_hyde:
-        hyde_mode = st.radio(
-            "HyDE 模式",
-            ["standard", "enhanced"],
-            index=1,
-            format_func=lambda x: {
-                "standard": "标准模式（纯 LLM 生成）",
-                "enhanced": "增强模式（结合真实数据）⭐"
-            }[x],
-            help="标准：完全基于 LLM 知识；增强：先检索真实数据再生成"
+    # 自定义模式显示原有选项
+    if selected_preset == "custom":
+        st.caption("⚙️ 自定义模式：手动配置所有参数")
+        
+        retrieval_mode = st.radio(
+            "选择检索方式",
+            ["向量检索", "BM25 检索", "混合检索", "Rerank 精排", "混合 + Rerank（最强）"],
+            index=2,
+            help="向量检索：语义理解\nBM25：精确匹配\n混合检索：综合最优\nRerank 精排：深度语义理解，准确率提升 20-30%\n混合 + Rerank：最强检索方案（推荐）"
         )
-        st.session_state.hyde_mode = hyde_mode
+        st.session_state.retrieval_mode = retrieval_mode
+    else:
+        # 使用预设配置
+        st.session_state.retrieval_mode = None  # 标记使用预设
     
-    enable_multi_variant = st.checkbox(
-        "启用多变体召回",
-        value=False,
-        help="生成同义词、语义扩展、不同表达方式等多种变体，最大化召回率。"
-    )
-    st.session_state.enable_multi_variant = enable_multi_variant
+    # 自定义模式下的高级配置
+    if selected_preset == "custom":
+        # 混合检索权重设置
+        if st.session_state.retrieval_mode in ["混合检索", "混合 + Rerank（最强）"]:
+            vector_weight = st.slider(
+                "向量检索权重",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.5,
+                step=0.1,
+                help="权重越高，越依赖语义理解；权重越低，越依赖精确匹配"
+            )
+            st.session_state.vector_weight = vector_weight
+            st.caption(f"BM25 权重: {1-vector_weight:.1f}")
+        
+        # Rerank 召回数量设置
+        if st.session_state.retrieval_mode in ["Rerank 精排", "混合 + Rerank（最强）"]:
+            recall_k = st.slider(
+                "召回候选数量",
+                min_value=10,
+                max_value=50,
+                value=20,
+                step=5,
+                help="第一阶段召回的候选数量，建议为最终结果数的 3-5 倍"
+            )
+            st.session_state.recall_k = recall_k
+            st.info("💡 Rerank 模型首次使用时会自动下载，请耐心等待")
+        
+        # 自适应过滤选项
+        if st.session_state.retrieval_mode in ["混合检索", "混合 + Rerank（最强）"]:
+            enable_adaptive_filter = st.checkbox(
+                "🎯 启用自适应过滤（动态阈值）",
+                value=True,
+                help="根据分数分布自动确定过滤阈值，避免盲目截断。推荐开启以提升召回质量。"
+            )
+            st.session_state.enable_adaptive_filter = enable_adaptive_filter
+            
+            if enable_adaptive_filter:
+                st.caption("✅ 将使用肘部法则、断崖检测等策略动态过滤低质量结果")
+            else:
+                st.caption("⚠️ 将使用固定 Top-K 截断（可能引入噪声或遗漏高质量结果）")
     
-    if enable_multi_variant:
-        recall_strategy = st.radio(
-            "召回策略",
-            ["aggressive", "balanced", "conservative"],
-            index=1,
-            format_func=lambda x: {
-                "aggressive": "激进（最大召回）",
-                "balanced": "平衡（推荐）",
-                "conservative": "保守（优先精度）"
-            }[x],
-            help="激进：使用所有变体；平衡：使用部分变体；保守：只使用同义词"
+    # 查询优化选项（仅在自定义模式下显示）
+    if selected_preset == "custom":
+        st.subheader("🔎 查询优化")
+        
+        enable_hyde = st.checkbox(
+            "启用 HyDE",
+            value=False,
+            help="生成假设文档增强查询语义。特别适合模糊查询或信息不足的场景。"
         )
-        st.session_state.recall_strategy = recall_strategy
-    
-    enable_query_expansion = st.checkbox(
-        "启用查询扩展",
-        value=False,
-        help="将模糊查询扩展为多个具体查询，提高召回率和精度。适用于短查询、模糊查询。"
-    )
-    st.session_state.enable_query_expansion = enable_query_expansion
-    
-    enable_multi_step = st.checkbox(
-        "启用多步骤检索",
-        value=False,
-        help="将复杂问题拆分为多个子问题，逐步检索并整合结果。适用于包含多个疑问的复杂问题。"
-    )
-    st.session_state.enable_multi_step = enable_multi_step
-    
-    if enable_hyde:
-        st.caption("💡 HyDE：生成假设答案文档 → 用文档检索文档（语义更丰富）")
-    
-    if enable_multi_variant:
-        st.caption("💡 多变体召回：'汽车修理' → 同义词+语义扩展+不同表达（提升召回率）")
-    
-    if enable_query_expansion:
-        st.caption("💡 查询扩展：'产品' → 'RAG产品' | '检索增强生成产品'")
-    
-    if enable_multi_step:
-        st.caption("💡 多步骤检索：'什么是RAG？它有什么优势？' → 拆分为2个子问题分别检索")
+        st.session_state.enable_hyde = enable_hyde
+        
+        if enable_hyde:
+            hyde_mode = st.radio(
+                "HyDE 模式",
+                ["standard", "enhanced"],
+                index=1,
+                format_func=lambda x: {
+                    "standard": "标准模式（纯 LLM 生成）",
+                    "enhanced": "增强模式（结合真实数据）⭐"
+                }[x],
+                help="标准：完全基于 LLM 知识；增强：先检索真实数据再生成"
+            )
+            st.session_state.hyde_mode = hyde_mode
+        
+        enable_multi_variant = st.checkbox(
+            "启用多变体召回",
+            value=False,
+            help="生成同义词、语义扩展、不同表达方式等多种变体，最大化召回率。"
+        )
+        st.session_state.enable_multi_variant = enable_multi_variant
+        
+        if enable_multi_variant:
+            recall_strategy = st.radio(
+                "召回策略",
+                ["aggressive", "balanced", "conservative"],
+                index=1,
+                format_func=lambda x: {
+                    "aggressive": "激进（最大召回）",
+                    "balanced": "平衡（推荐）",
+                    "conservative": "保守（优先精度）"
+                }[x],
+                help="激进：使用所有变体；平衡：使用部分变体；保守：只使用同义词"
+            )
+            st.session_state.recall_strategy = recall_strategy
+        
+        enable_query_expansion = st.checkbox(
+            "启用查询扩展",
+            value=False,
+            help="将模糊查询扩展为多个具体查询，提高召回率和精度。适用于短查询、模糊查询。"
+        )
+        st.session_state.enable_query_expansion = enable_query_expansion
+        
+        enable_multi_step = st.checkbox(
+            "启用多步骤检索",
+            value=False,
+            help="将复杂问题拆分为多个子问题，逐步检索并整合结果。适用于包含多个疑问的复杂问题。"
+        )
+        st.session_state.enable_multi_step = enable_multi_step
+        
+        if enable_hyde:
+            st.caption("💡 HyDE：生成假设答案文档 → 用文档检索文档（语义更丰富）")
+        
+        if enable_multi_variant:
+            st.caption("💡 多变体召回：'汽车修理' → 同义词+语义扩展+不同表达（提升召回率）")
+        
+        if enable_query_expansion:
+            st.caption("💡 查询扩展：'产品' → 'RAG产品' | '检索增强生成产品'")
+        
+        if enable_multi_step:
+            st.caption("💡 多步骤检索：'什么是RAG？它有什么优势？' → 拆分为2个子问题分别检索")
+    else:
+        # 预设模式下，清空这些配置（由预设自动决定）
+        st.session_state.enable_hyde = False
+        st.session_state.enable_multi_variant = False
+        st.session_state.enable_query_expansion = False
+        st.session_state.enable_multi_step = False
     
     # 当前切片策略
     if st.session_state.chunk_strategy:
